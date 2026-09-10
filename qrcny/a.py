@@ -541,23 +541,51 @@ def qr_de_dni(dni):
     return qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
 def leer_qr(img):
+    """
+    Lee QR usando solo OpenCV (sin instalar nada extra).
+    img: PIL.Image
+    Devuelve el DNI (8 dígitos) o None.
+    """
     try:
         import cv2
-        arr = np.array(img)
-        if arr.ndim == 3 and arr.shape[2] == 3:
-            arr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+        arr = np.array(img.convert("RGB"))
+        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
 
-        # Detector nativo de OpenCV (sin libzbar, sin IA)
         detector = cv2.QRCodeDetector()
-        data, bbox, _ = detector.detectAndDecode(arr)
 
-        if data:
-            m = re.search(r"\b(\d{8})\b", data)
-            return m.group(1) if m else data.strip()
+        # Probar varias combinaciones de escala + umbral
+        variantes = []
+
+        # 1) Directo en escala de grises
+        variantes.append(gray)
+
+        # 2) Escalas crecientes (QR chico en la foto)
+        for escala in (1.5, 2.0, 3.0):
+            variantes.append(cv2.resize(gray, None, fx=escala, fy=escala,
+                                        interpolation=cv2.INTER_CUBIC))
+
+        # 3) Umbral adaptativo (mejora contraste con luz irregular)
+        for base in list(variantes):
+            th = cv2.adaptiveThreshold(base, 255,
+                                       cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                       cv2.THRESH_BINARY, 31, 5)
+            variantes.append(th)
+
+        # 4) Umbral de Otsu
+        for base in list(variantes[:4]):
+            _, otsu = cv2.threshold(base, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            variantes.append(otsu)
+
+        for v in variantes:
+            data, _, _ = detector.detectAndDecode(v)
+            if data:
+                m = re.search(r"\b(\d{8})\b", data)
+                return m.group(1) if m else data.strip()
+
     except Exception as e:
         st.error(f"Error leyendo QR: {e}")
     return None
-
+    
 def color_estado(v):
     if v == "Puntual":  return "background-color:#d4edda;color:#155724;font-weight:bold"
     if v == "Tardanza": return "background-color:#fff3cd;color:#856404;font-weight:bold"
@@ -840,16 +868,20 @@ def vista_puerta():
     modo = st.radio("Método", ["📷 Escanear QR", "🔢 DNI manual"], horizontal=True)
 
     if modo == "📷 Escanear QR":
-        if "cam_key" not in st.session_state:
-            st.session_state.cam_key = 0
-        img_file = st.camera_input("Muestra tu QR", key=f"cam_{st.session_state.cam_key}")
-        if img_file:
+    if "cam_key" not in st.session_state:
+        st.session_state.cam_key = 0
+
+    img_file = st.camera_input("Muestra tu QR", key=f"cam_{st.session_state.cam_key}")
+
+    if img_file:
+        with st.spinner("🔍 Leyendo QR..."):
             dni = leer_qr(Image.open(BytesIO(img_file.getvalue())))
-            if not dni:
-                st.error("❌ No se detectó QR. Prueba con mejor luz o más cerca.")
-            else:
-                _procesar_entrada(dni, usuario)
-                st.session_state.cam_key += 1
+        if not dni:
+            st.error("❌ No se detectó QR. Acércalo más, mejora la luz o evita reflejos.")
+        else:
+            _procesar_entrada(dni, usuario)
+            st.session_state.cam_key += 1
+            st.rerun()
     else:
         with st.form("dni_manual"):
             dni = st.text_input("DNI (8 dígitos)", max_chars=8)
