@@ -585,15 +585,18 @@ def qr_de_dni(dni):
 
 def leer_qr(img):
     try:
-        from qreader import QReader
         import cv2
         arr = np.array(img)
         if arr.ndim == 3 and arr.shape[2] == 3:
             arr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-        res = QReader().detect_and_decode(image=arr)
-        if res:
-            m = re.search(r"\b(\d{8})\b", res[0])
-            return m.group(1) if m else res[0].strip()
+
+        # Detector nativo de OpenCV (sin libzbar, sin IA)
+        detector = cv2.QRCodeDetector()
+        data, bbox, _ = detector.detectAndDecode(arr)
+
+        if data:
+            m = re.search(r"\b(\d{8})\b", data)
+            return m.group(1) if m else data.strip()
     except Exception as e:
         st.error(f"Error leyendo QR: {e}")
     return None
