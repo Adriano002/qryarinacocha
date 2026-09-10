@@ -868,20 +868,16 @@ def vista_puerta():
     modo = st.radio("Método", ["📷 Escanear QR", "🔢 DNI manual"], horizontal=True)
 
     if modo == "📷 Escanear QR":
-    if "cam_key" not in st.session_state:
-        st.session_state.cam_key = 0
-
-    img_file = st.camera_input("Muestra tu QR", key=f"cam_{st.session_state.cam_key}")
-
-    if img_file:
-        with st.spinner("🔍 Leyendo QR..."):
+        if "cam_key" not in st.session_state:
+            st.session_state.cam_key = 0
+        img_file = st.camera_input("Muestra tu QR", key=f"cam_{st.session_state.cam_key}")
+        if img_file:
             dni = leer_qr(Image.open(BytesIO(img_file.getvalue())))
-        if not dni:
-            st.error("❌ No se detectó QR. Acércalo más, mejora la luz o evita reflejos.")
-        else:
-            _procesar_entrada(dni, usuario)
-            st.session_state.cam_key += 1
-            st.rerun()
+            if not dni:
+                st.error("❌ No se detectó QR. Prueba con mejor luz o más cerca.")
+            else:
+                _procesar_entrada(dni, usuario)
+                st.session_state.cam_key += 1
     else:
         with st.form("dni_manual"):
             dni = st.text_input("DNI (8 dígitos)", max_chars=8)
