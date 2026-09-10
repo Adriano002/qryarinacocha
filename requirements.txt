@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy<2
+opencv-python-headless<4.11
+qrcode
+pillow
+reportlab
+qreader
+openpyxl
+plotly
