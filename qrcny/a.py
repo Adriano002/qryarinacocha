@@ -209,8 +209,7 @@ def _init_once():
 _init_once()
 
 # 4. SERVICIOS
-
-# ───── 4.1 Auth ────────────────────────────────────────────────────────────
+# 4.1 Auth 
 def autenticar(usuario, password):
     conn = get_db()
     r = conn.execute(
@@ -223,7 +222,6 @@ def autenticar(usuario, password):
         return None
     return dict(r)
 
-
 def auditar(usuario, accion):
     conn = get_db()
     conn.execute(
@@ -233,14 +231,13 @@ def auditar(usuario, accion):
     conn.commit()
     conn.close()
 
-# ───── 4.2 Turnos 
+# 4.2 Turnos 
 @st.cache_data(ttl=60)
 def turnos():
     conn = get_db()
     rows = conn.execute("SELECT * FROM turnos ORDER BY id").fetchall()
     conn.close()
     return [dict(r) for r in rows]
-
 
 @st.cache_data(ttl=60)
 def horario_del_dia(turno_id, fecha=None):
@@ -265,7 +262,7 @@ def horario_del_dia(turno_id, fecha=None):
         "especial": False,
     }
 
-# ───── 4.3 Asistencia 
+#  4.3 Asistencia 
 def registrar_entrada(dni, usuario):
     dni = (dni or "").strip()
     if not re.fullmatch(r"\d{8}", dni):
@@ -504,7 +501,7 @@ def historial_observados_alumno(dni):
     nombre = f"{al['apellido_paterno']} {al['apellido_materno'] or ''}, {al['nombres']}".strip(", ")
     return {"nombre": nombre, "tardanzas": tard, "actas": actas, "observados": obs}
 
-# ───── 4.5 Métricas 
+# 4.5 Métricas 
 @st.cache_data(ttl=10)
 def metricas_dia(fecha):
     conn = get_db()
@@ -519,7 +516,6 @@ def metricas_dia(fecha):
     """, (fecha,)*5).fetchone()
     conn.close()
     return dict(r)
-
 
 def ultimos_registros(fecha, limite=10):
     conn = get_db()
@@ -538,7 +534,6 @@ def ultimos_registros(fecha, limite=10):
     return df
 
 # 5. QR / PDF
-
 def qr_de_dni(dni):
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(str(dni).strip())
@@ -562,7 +557,6 @@ def leer_qr(img):
     except Exception as e:
         st.error(f"Error leyendo QR: {e}")
     return None
-
 
 def color_estado(v):
     if v == "Puntual":  return "background-color:#d4edda;color:#155724;font-weight:bold"
@@ -790,7 +784,6 @@ def insertar_validas(validas):
     return insertados
         
 # 7. VISTAS
-
 #  7.1 Login 
 def vista_login():
     st.title("📚 Sistema de Asistencia - I.E. Yarinacocha")
@@ -1050,7 +1043,7 @@ def vista_toece():
                     st.cache_data.clear()
 
 
-# ───── 7.5 Panel Dirección (Punto 13) ──────────────────────────────────────
+# 7.5 Panel Dirección
 def vista_panel_direccion():
     import plotly.express as px
     st.title("🏛️ Panel Dirección")
@@ -1138,7 +1131,7 @@ def vista_panel_direccion():
         st.dataframe(df_ret, use_container_width=True)
 
 
-# ───── 7.6 Perfil del alumno (Punto 14) ────────────────────────────────────
+# 7.6 Perfil del alumno
 def vista_perfil_alumno():
     import plotly.express as px
     st.title("🔍 Perfil del alumno")
@@ -1263,7 +1256,7 @@ def _df_to_xlsx(df, sheet_name="Datos"):
     return buf.getvalue()
 
 
-# ───── 7.7 Cierre mensual (Punto 10) ──────────────────────────────────────
+# 7.7 Cierre mensual 
 def vista_cierre_mensual():
     st.title("📄 Cierre mensual")
 
@@ -1380,7 +1373,7 @@ def _pdf_cierre_mensual(df, mes_nombre, anio, turno):
     return buf.getvalue()
 
 
-# ───── 7.8 Conteo de faltas (Punto 5 - versión C) ──────────────────────────
+# 7.8 Conteo de faltas 
 def vista_conteo_faltas():
     st.title("📊 Conteo de faltas")
     st.caption("Solo información. El sistema no toma acciones automáticas.")
@@ -1444,7 +1437,7 @@ def vista_conteo_faltas():
                            f"conteo_faltas_{dias}d.pdf", "application/pdf")
 
 
-# ───── 7.9 Reportes ────────────────────────────────────────────────────────
+# 7.9 Reportes 
 def vista_reportes():
     import plotly.express as px
     st.title("📊 Reportes")
@@ -1536,7 +1529,7 @@ def vista_reportes():
     st.download_button("⬇️ PDF", pdf_tabla(df, f"Reporte {periodo}"), f"reporte_{periodo}.pdf", "application/pdf")
 
 
-# ───── 7.10 Días especiales ────────────────────────────────────────────────
+# 7.10 Días especiales 
 def vista_dias_especiales():
     st.title("📅 Días especiales")
     tab1, tab2 = st.tabs(["➕ Crear", "📋 Listar / eliminar"])
@@ -1589,8 +1582,7 @@ def vista_dias_especiales():
                 st.success("Eliminado.")
                 st.cache_data.clear()
 
-
-# ───── 7.11 Alumnos ────────────────────────────────────────────────────────
+# 7.11 Alumnos 
 def vista_alumnos():
     st.title("👥 Alumnos")
     tab1, tab2, tab3 = st.tabs(["📥 Importar Excel", "📋 Listar", "✏️ Editar"])
@@ -1686,7 +1678,7 @@ def vista_alumnos():
         st.write(f"{len(df)} alumnos")
         st.dataframe(df, use_container_width=True)
 
-    # ─── Editar ───
+    # Editar
     with tab3:
         dni = st.text_input("DNI del alumno")
         if dni:
@@ -1722,7 +1714,7 @@ def vista_alumnos():
                     st.success("Actualizado.")
 
 
-# ───── 7.12 Carnets ────────────────────────────────────────────────────────
+# 7.12 Carnets 
 def vista_carnets():
     st.title("🪪 Carnets")
 
@@ -1777,7 +1769,7 @@ def vista_carnets():
                                "application/zip")
 
 
-# ───── 7.13 Usuarios ───────────────────────────────────────────────────────
+# 7.13 Usuarios 
 def vista_usuarios():
     st.title("👤 Usuarios")
     tab1, tab2 = st.tabs(["📋 Listar", "➕ Crear"])
@@ -1827,7 +1819,7 @@ def vista_usuarios():
                 conn.close()
 
 
-# ───── 7.14 Horarios ───────────────────────────────────────────────────────
+# 7.14 Horarios
 def vista_horarios():
     st.title("⏰ Horarios de turno")
     conn = get_db()
