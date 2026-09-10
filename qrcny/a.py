@@ -1,18 +1,4 @@
-"""
-Sistema de Asistencia - I.E. Yarinacocha
-Todo en un solo archivo: DB, services, views.
-Roles: Admin / TOECE / Auxiliar / Direccion
-Reglas: turnos Mañana (06:45) y Tarde (12:20), tolerancia 7 min.
-        Tardanzas: 1ª/2ª perdonadas, 3ª → TOECE, 4ª+ → retenido.
-        Acta firmada -> reset contador + observado.
-        Faltas: solo conteo (sin reglas automáticas).
-        Justificación: solo texto en observación.
-"""
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 1. IMPORTS
-# ═══════════════════════════════════════════════════════════════════════════
-
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -30,14 +16,9 @@ import numpy as np
 import re
 
 st.set_page_config(page_title="Asistencia I.E. Yarinacocha", page_icon="📚", layout="wide")
-
 DB_PATH = "asistencia.db"
 
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 2. UTILIDADES
-# ═══════════════════════════════════════════════════════════════════════════
-
 def ahora():
     return datetime.now(timezone.utc) - timedelta(hours=5)
 
@@ -58,10 +39,7 @@ def es_dia_laboral(fecha=None):
 MESES_ES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 3. BASE DE DATOS
-# ═══════════════════════════════════════════════════════════════════════════
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -230,10 +208,7 @@ def _init_once():
 
 _init_once()
 
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 4. SERVICIOS
-# ═══════════════════════════════════════════════════════════════════════════
 
 # ───── 4.1 Auth ────────────────────────────────────────────────────────────
 def autenticar(usuario, password):
@@ -258,8 +233,7 @@ def auditar(usuario, accion):
     conn.commit()
     conn.close()
 
-
-# ───── 4.2 Turnos ──────────────────────────────────────────────────────────
+# ───── 4.2 Turnos 
 @st.cache_data(ttl=60)
 def turnos():
     conn = get_db()
@@ -291,8 +265,7 @@ def horario_del_dia(turno_id, fecha=None):
         "especial": False,
     }
 
-
-# ───── 4.3 Asistencia ──────────────────────────────────────────────────────
+# ───── 4.3 Asistencia 
 def registrar_entrada(dni, usuario):
     dni = (dni or "").strip()
     if not re.fullmatch(r"\d{8}", dni):
@@ -371,7 +344,6 @@ def registrar_entrada(dni, usuario):
     auditar(usuario["usuario"], f"Tardanza {numero}ª DNI {dni} -> {accion}")
     return True, "TARDANZA", mensaje, {**al, "numero": numero, "accion": accion}
 
-
 def marcar_faltas_al_cierre():
     ult = st.session_state.get("_ult_faltas")
     if ult and (ahora() - ult).total_seconds() < 300:
@@ -398,7 +370,6 @@ def marcar_faltas_al_cierre():
         """, (hoy, hora_str(), t["id"]))
     conn.commit()
     conn.close()
-
 
 def justificar_falta_por_dni(dni, justificada, observacion, usuario):
     dni = (dni or "").strip()
@@ -429,7 +400,6 @@ def justificar_falta_por_dni(dni, justificada, observacion, usuario):
     auditar(usuario["usuario"], f"Falta de {dni} -> {estado_txt}")
     return True, f"Falta de {nombre} marcada como {estado_txt}"
 
-
 def faltas_del_dia(usuario, solo_injustificadas=False, fecha=None):
     fecha = fecha or hoy_str()
     conn = get_db()
@@ -456,8 +426,7 @@ def faltas_del_dia(usuario, solo_injustificadas=False, fecha=None):
     conn.close()
     return df
 
-
-# ───── 4.4 TOECE ───────────────────────────────────────────────────────────
+# ───── 4.4 TOECE 
 def registrar_acta(alumno_id, motivo, observacion, usuario):
     conn = get_db()
     ts = ahora().strftime("%Y-%m-%d %H:%M:%S")
@@ -476,7 +445,6 @@ def registrar_acta(alumno_id, motivo, observacion, usuario):
     conn.commit()
     conn.close()
     auditar(usuario["usuario"], f"Acta firmada alumno_id={alumno_id}")
-
 
 def liberar_observado(alumno_id, usuario):
     conn = get_db()
@@ -511,7 +479,6 @@ def observados_dataframe(solo_activos=True):
     conn.close()
     return df
 
-
 def historial_observados_alumno(dni):
     conn = get_db()
     al = conn.execute(
@@ -537,8 +504,7 @@ def historial_observados_alumno(dni):
     nombre = f"{al['apellido_paterno']} {al['apellido_materno'] or ''}, {al['nombres']}".strip(", ")
     return {"nombre": nombre, "tardanzas": tard, "actas": actas, "observados": obs}
 
-
-# ───── 4.5 Métricas ────────────────────────────────────────────────────────
+# ───── 4.5 Métricas 
 @st.cache_data(ttl=10)
 def metricas_dia(fecha):
     conn = get_db()
@@ -571,17 +537,13 @@ def ultimos_registros(fecha, limite=10):
     conn.close()
     return df
 
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 5. QR / PDF
-# ═══════════════════════════════════════════════════════════════════════════
 
 def qr_de_dni(dni):
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(str(dni).strip())
     qr.make(fit=True)
     return qr.make_image(fill_color="black", back_color="white").convert("RGB")
-
 
 def leer_qr(img):
     try:
@@ -608,7 +570,6 @@ def color_estado(v):
     if v == "Falta":    return "background-color:#f8d7da;color:#721c24;font-weight:bold"
     return ""
 
-
 def _pdf_base(titulo, subtitulo=None, paisaje=False):
     buf = BytesIO()
     size = A4 if not paisaje else (A4[1], A4[0])
@@ -620,7 +581,6 @@ def _pdf_base(titulo, subtitulo=None, paisaje=False):
     el.append(Paragraph(f"Generado: {ahora().strftime('%Y-%m-%d %H:%M')}", estilos["Normal"]))
     el.append(Spacer(1, 15))
     return buf, doc, el, estilos
-
 
 def pdf_tabla(df, titulo, subtitulo=None):
     buf, doc, el, estilos = _pdf_base(titulo, subtitulo, paisaje=len(df.columns) > 6)
@@ -640,7 +600,6 @@ def pdf_tabla(df, titulo, subtitulo=None):
     doc.build(el)
     buf.seek(0)
     return buf.getvalue()
-
 
 def pdf_carnets(seccion_id):
     conn = get_db()
@@ -693,7 +652,6 @@ def pdf_carnets(seccion_id):
     buf.seek(0)
     return buf.getvalue()
 
-
 def pdf_reporte_observados(df, titulo="Reporte de Observados"):
     buf, doc, el, estilos = _pdf_base(titulo, "I.E. Yarinacocha")
     if df.empty:
@@ -716,10 +674,7 @@ def pdf_reporte_observados(df, titulo="Reporte de Observados"):
     buf.seek(0)
     return buf.getvalue()
 
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 6. IMPORTACIÓN ROBUSTA (Punto 2)
-# ═══════════════════════════════════════════════════════════════════════════
 
 def validar_importacion(df, mapeo):
     """
@@ -802,7 +757,6 @@ def validar_importacion(df, mapeo):
     }
     return validas, errores, stats
 
-
 def insertar_validas(validas):
     conn = get_db()
     c = conn.cursor()
@@ -834,13 +788,10 @@ def insertar_validas(validas):
     conn.commit()
     conn.close()
     return insertados
-
-
-# ═══════════════════════════════════════════════════════════════════════════
+        
 # 7. VISTAS
-# ═══════════════════════════════════════════════════════════════════════════
 
-# ───── 7.1 Login ───────────────────────────────────────────────────────────
+#  7.1 Login 
 def vista_login():
     st.title("📚 Sistema de Asistencia - I.E. Yarinacocha")
     st.caption("Ingresa con tu usuario y contraseña")
@@ -861,8 +812,7 @@ def vista_login():
             else:
                 st.error("❌ Credenciales incorrectas")
 
-
-# ───── 7.2 Puerta ──────────────────────────────────────────────────────────
+#  7.2 Puerta 
 def vista_puerta():
     st.title("🚪 Control de Puerta")
     usuario = st.session_state.user
@@ -942,8 +892,7 @@ def _procesar_entrada(dni, usuario):
             st.error(msg)
             st.info("👉 Retener al alumno hasta que llegue su apoderado.")
 
-
-# ───── 7.3 Faltas ──────────────────────────────────────────────────────────
+#  7.3 Faltas
 def vista_faltas():
     st.title("🚫 Faltas del día")
     usuario = st.session_state.user
@@ -988,8 +937,7 @@ def vista_faltas():
             else:
                 st.error(msg)
 
-
-# ───── 7.4 TOECE ───────────────────────────────────────────────────────────
+#  7.4 TOECE
 def vista_toece():
     st.title("📋 TOECE — Derivados y Observados")
     usuario = st.session_state.user
@@ -1899,8 +1847,7 @@ def vista_horarios():
             st.success("Actualizado.")
     conn.close()
 
-
-# ───── 7.15 Auditoría ──────────────────────────────────────────────────────
+# 7.15 Auditoría 
 def vista_auditoria():
     st.title("📋 Auditoría")
     conn = get_db()
@@ -1909,11 +1856,7 @@ def vista_auditoria():
     st.write(f"{len(df)} registros (últimos 200)")
     st.dataframe(df, use_container_width=True)
 
-
-# ═══════════════════════════════════════════════════════════════════════════
 # 8. MAIN
-# ═══════════════════════════════════════════════════════════════════════════
-
 def menu_lateral():
     user = st.session_state.user
     rol = user["rol"]
@@ -1951,14 +1894,11 @@ def menu_lateral():
 
     return opcion
 
-
 def main():
     if "user" not in st.session_state:
         vista_login()
         return
-
     opcion = menu_lateral()
-
     vistas = {
         "🚪 Puerta":              vista_puerta,
         "🚫 Faltas":              vista_faltas,
@@ -1976,7 +1916,5 @@ def main():
         "📋 Auditoría":           vista_auditoria,
     }
     vistas.get(opcion, lambda: st.warning("Vista no disponible"))()
-
-
 if __name__ == "__main__":
     main()
