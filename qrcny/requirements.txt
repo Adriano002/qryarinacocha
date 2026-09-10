@@ -4,5 +4,4 @@ openpyxl>=3.1.0
 reportlab>=4.0.0
 qrcode>=7.0.0
 Pillow>=10.0.0
-qreader>=1.0.0
 opencv-python-headless==4.10.0.84
